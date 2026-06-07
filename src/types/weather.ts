@@ -30,6 +30,71 @@ export interface HistoryWeather {
   history: Record<string, WeatherData[]>[];
 }
 
+// ── Internal aggregation types ────────────────────────────────────────────────
+
+export interface RawProviderForecastHour {
+  time: string;
+  temp: number;
+  humidity: number;
+  description: string;
+  windSpeed: number;
+  rainChance: number;  // 0-100
+  precipitation: number; // mm
+}
+
+export interface RawProviderForecastDay {
+  date: string;
+  tempHigh: number;
+  tempLow: number;
+  humidity: number;
+  description: string;
+  windSpeed: number;
+  rainChance: number;
+  precipitation: number;
+  hourly: RawProviderForecastHour[];
+}
+
+export interface RawProviderForecast {
+  name: string;
+  daily: RawProviderForecastDay[];
+}
+
+// ── Public API types ───────────────────────────────────────────────────────────
+
+export interface ProviderDayForecast {
+  tempHigh: number;
+  tempLow: number;
+  humidity: number;
+  description: string;
+  windSpeed: number;
+  rainChance: number;
+  precipitation: number;
+}
+
+export interface ProviderHourForecast {
+  time: string;
+  temp: number;
+  humidity: number;
+  description: string;
+  windSpeed: number;
+  rainChance: number;
+  precipitation: number;
+}
+
+export interface MultiProviderDay {
+  date: string;
+  label: string;
+  // Keyed by provider name, e.g. { "Open-Meteo": {...}, "MET Norway": {...} }
+  providers: Record<string, ProviderDayForecast>;
+  hourly: Record<string, ProviderHourForecast[]>;
+}
+
+export interface MultiProviderForecast {
+  location: { lat: number; lon: number };
+  providerNames: string[];
+  daily: MultiProviderDay[];
+}
+
 export interface StoredReadings {
   location: { lat: number; lon: number };
   // Stored readings grouped per provider, e.g. { "Open-Meteo": [ {...}, {...} ] }.

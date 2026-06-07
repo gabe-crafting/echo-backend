@@ -1,7 +1,11 @@
 import { weatherService } from '../services/weather.service';
-import type { AggregatedWeather, HistoryWeather, StoredReadings } from '../types/weather';
+import type { AggregatedWeather, HistoryWeather, MultiProviderForecast, StoredReadings } from '../types/weather';
 
 export const weatherController = {
+  async getForecast(lat: number, lon: number): Promise<MultiProviderForecast> {
+    return weatherService.getForecast(lat, lon);
+  },
+
   async getCurrent(
     lat: number,
     lon: number

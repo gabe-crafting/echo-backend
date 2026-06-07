@@ -1,6 +1,9 @@
 import { providers } from '../providers/index.js';
-import type { AggregatedWeather, HistoryWeather, StoredReadings, WeatherData } from '../types/weather.ts';
+import type { AggregatedWeather, HistoryWeather, MultiProviderDay, MultiProviderForecast, RawProviderForecast, StoredReadings, WeatherData } from '../types/weather.ts';
 import { saveReading, getReadings } from '../db/readings.js';
+import { fetchOpenMeteoForecast } from '../providers/open-meteo.js';
+import { fetchMetNorwayForecast } from '../providers/met-norway.js';
+import { fetchOpenWeatherForecast } from '../providers/openweather.js';
 
 export const weatherService = {
   async getAggregatedWeather(lat: number, lon: number): Promise<AggregatedWeather> {
@@ -45,6 +48,54 @@ export const weatherService = {
     );
 
     return { location: { lat, lon }, readings };
+  },
+
+  async getForecast(lat: number, lon: number): Promise<MultiProviderForecast> {
+    const results = await Promise.allSettled([
+      fetchOpenMeteoForecast(lat, lon, 7),
+      fetchMetNorwayForecast(lat, lon),
+      fetchOpenWeatherForecast(lat, lon),
+    ]);
+
+    const providerResults: RawProviderForecast[] = results
+      .filter((r): r is PromiseFulfilledResult<RawProviderForecast> => r.status === 'fulfilled')
+      .map(r => r.value);
+
+    // Union of all dates across providers, sorted ascending
+    const allDates = [...new Set(providerResults.flatMap(p => p.daily.map(d => d.date)))].sort();
+
+    const daily: MultiProviderDay[] = allDates.map(date => {
+      const providers: MultiProviderDay['providers'] = {};
+      const hourly: MultiProviderDay['hourly'] = {};
+
+      for (const p of providerResults) {
+        const day = p.daily.find(d => d.date === date);
+        if (!day) continue;
+        providers[p.name] = {
+          tempHigh: day.tempHigh,
+          tempLow: day.tempLow,
+          humidity: day.humidity,
+          description: day.description,
+          windSpeed: day.windSpeed,
+          rainChance: day.rainChance,
+          precipitation: day.precipitation,
+        };
+        hourly[p.name] = day.hourly;
+      }
+
+      return {
+        date,
+        label: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+        providers,
+        hourly,
+      };
+    });
+
+    return {
+      location: { lat, lon },
+      providerNames: providerResults.map(p => p.name),
+      daily,
+    };
   },
 
   async getHistory(

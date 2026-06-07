@@ -3,6 +3,18 @@ import { weatherController } from '../controllers/weather.controller';
 
 export const weatherRoutes = new Elysia({ prefix: '/weather' })
   .get(
+    '/forecast',
+    async ({ query }) => {
+      return weatherController.getForecast(query.lat, query.lon);
+    },
+    {
+      query: t.Object({
+        lat: t.Number({ description: 'Latitude' }),
+        lon: t.Number({ description: 'Longitude' }),
+      }),
+    }
+  )
+  .get(
     '/',
     async ({ query }) => {
       return weatherController.getCurrent(query.lat, query.lon);
