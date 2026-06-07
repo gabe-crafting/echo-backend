@@ -1,9 +1,33 @@
 import { providers } from '../providers/index.js';
 import type { AggregatedWeather, HistoryWeather, MultiProviderDay, MultiProviderForecast, RawProviderForecast, StoredReadings, WeatherData } from '../types/weather.ts';
-import { saveReading, getReadings } from '../db/readings.js';
+import { saveReading, getReadings, saveForecastReadings } from '../db/readings.js';
 import { fetchOpenMeteoForecast } from '../providers/open-meteo.js';
 import { fetchMetNorwayForecast } from '../providers/met-norway.js';
 import { fetchOpenWeatherForecast } from '../providers/openweather.js';
+
+// Flatten provider forecasts into per-hour WeatherData rows for persistence.
+// Provider hours carry only the clock time ("HH:MM"); the date lives on the
+// parent day, so combine them into a full "YYYY-MM-DDTHH:MM" timestamp that
+// matches how ERA5 and current readings are stored.
+function forecastToReadings(providerResults: RawProviderForecast[]): WeatherData[] {
+  const out: WeatherData[] = [];
+  for (const p of providerResults) {
+    for (const day of p.daily) {
+      for (const h of day.hourly) {
+        out.push({
+          timestamp: `${day.date}T${h.time}`,
+          temperature: h.temp,
+          humidity: h.humidity,
+          precipitation: h.precipitation,
+          windSpeed: h.windSpeed,
+          condition: h.description,
+          provider: p.name,
+        });
+      }
+    }
+  }
+  return out;
+}
 
 export const weatherService = {
   async getAggregatedWeather(lat: number, lon: number): Promise<AggregatedWeather> {
@@ -60,6 +84,17 @@ export const weatherService = {
     const providerResults: RawProviderForecast[] = results
       .filter((r): r is PromiseFulfilledResult<RawProviderForecast> => r.status === 'fulfilled')
       .map(r => r.value);
+
+    // Record each provider's prediction so a later history view can compare it
+    // against ERA5 actuals. Deferred so it never adds latency to this response;
+    // deduped + future-only in the db layer so it writes nothing redundant.
+    queueMicrotask(() => {
+      try {
+        saveForecastReadings(lat, lon, forecastToReadings(providerResults));
+      } catch (err) {
+        console.error('[forecast persistence] failed:', err);
+      }
+    });
 
     // Union of all dates across providers, sorted ascending
     const allDates = [...new Set(providerResults.flatMap(p => p.daily.map(d => d.date)))].sort();
