@@ -1,5 +1,6 @@
 import { WeatherData } from "../types/weather";
 import { WeatherProvider } from "./base";
+import { mapWmoCode } from "../utils/wmo";
 
 export const openMeteoProvider: WeatherProvider = {
   name: 'Open-Meteo',
@@ -19,14 +20,8 @@ export const openMeteoProvider: WeatherProvider = {
       humidity: data.current.relative_humidity_2m,
       precipitation: data.current.precipitation ?? 0,
       windSpeed: data.current.wind_speed_10m,
-      condition: mapWmoCode(data.current.weather_code), // you can implement this
+      condition: mapWmoCode(data.current.weather_code),
       provider: this.name,
     };
   },
 };
-
-// Optional helper
-function mapWmoCode(code: number): string {
-  // map WMO codes to text (clear, cloudy, rain, etc.)
-  return 'unknown';
-}
