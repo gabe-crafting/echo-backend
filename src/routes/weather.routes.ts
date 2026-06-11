@@ -2,6 +2,9 @@ import { Elysia, t } from 'elysia';
 import { weatherController } from '../controllers/weather.controller';
 
 export const weatherRoutes = new Elysia({ prefix: '/weather' })
+  .get('/providers', async () => {
+    return weatherController.getProviders();
+  })
   .get(
     '/forecast',
     async ({ query }) => {

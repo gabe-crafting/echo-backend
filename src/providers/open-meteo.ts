@@ -77,4 +77,12 @@ export const openMeteoProvider: WeatherProvider = {
       provider: this.name,
     };
   },
+
+  async checkHealth() {
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=0&longitude=0&current=temperature_2m`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    return { ok: res.ok, configured: true };
+  },
 };

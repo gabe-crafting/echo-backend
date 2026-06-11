@@ -36,4 +36,14 @@ export const era5Provider: WeatherProvider = {
       provider: this.name,
     }));
   },
+
+  async checkHealth() {
+    // Probe the archive host with a tiny, long-settled date so it always has data.
+    const url =
+      `https://archive-api.open-meteo.com/v1/archive` +
+      `?latitude=0&longitude=0&start_date=2020-01-01&end_date=2020-01-01` +
+      `&hourly=temperature_2m`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    return { ok: res.ok, configured: true };
+  },
 };

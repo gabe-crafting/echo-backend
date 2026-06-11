@@ -1,5 +1,5 @@
 import { providers } from '../providers/index.js';
-import type { AggregatedWeather, HistoryWeather, MultiProviderDay, MultiProviderForecast, RawProviderForecast, StoredReadings, WeatherData } from '../types/weather.ts';
+import type { AggregatedWeather, HistoryWeather, MultiProviderDay, MultiProviderForecast, ProvidersStatus, ProviderStatus, RawProviderForecast, StoredReadings, WeatherData } from '../types/weather.ts';
 import { saveReading, getReadings, saveForecastReadings } from '../db/readings.js';
 import { fetchOpenMeteoForecast } from '../providers/open-meteo.js';
 import { fetchMetNorwayForecast } from '../providers/met-norway.js';
@@ -30,6 +30,31 @@ function forecastToReadings(providerResults: RawProviderForecast[]): WeatherData
 }
 
 export const weatherService = {
+  // Probe every provider's connectivity in parallel and report per-provider
+  // status + latency. One slow/failing provider never blocks or breaks the rest.
+  async getProviderStatuses(): Promise<ProvidersStatus> {
+    const statuses = await Promise.all(
+      providers.map(async (p): Promise<ProviderStatus> => {
+        if (!p.checkHealth) {
+          return { name: p.name, status: 'offline', latencyMs: null };
+        }
+        const started = Date.now();
+        try {
+          const health = await p.checkHealth();
+          const latencyMs = Date.now() - started;
+          if (!health.configured) {
+            return { name: p.name, status: 'unconfigured', latencyMs: null };
+          }
+          return { name: p.name, status: health.ok ? 'online' : 'offline', latencyMs };
+        } catch {
+          return { name: p.name, status: 'offline', latencyMs: null };
+        }
+      })
+    );
+
+    return { providers: statuses };
+  },
+
   async getAggregatedWeather(lat: number, lon: number): Promise<AggregatedWeather> {
     // Only providers that can report current weather.
     const capable = providers.filter(p => p.fetchCurrent);

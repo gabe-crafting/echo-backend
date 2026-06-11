@@ -95,6 +95,19 @@ export interface MultiProviderForecast {
   daily: MultiProviderDay[];
 }
 
+export interface ProviderStatus {
+  name: string;
+  // online: reachable. offline: configured but unreachable/erroring.
+  // unconfigured: missing setup (e.g. API key) so it can never connect.
+  status: 'online' | 'offline' | 'unconfigured';
+  // Round-trip time of the probe in ms, or null when the probe didn't complete.
+  latencyMs: number | null;
+}
+
+export interface ProvidersStatus {
+  providers: ProviderStatus[];
+}
+
 export interface StoredReadings {
   location: { lat: number; lon: number };
   // Stored readings grouped per provider, e.g. { "Open-Meteo": [ {...}, {...} ] }.

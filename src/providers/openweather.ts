@@ -103,4 +103,16 @@ export const openWeatherProvider: WeatherProvider = {
       provider: this.name,
     };
   },
+
+  async checkHealth() {
+    // Without a key this provider can never connect — report it as unconfigured
+    // rather than offline so the frontend can tell the two apart.
+    if (!config.openWeatherApiKey) return { ok: false, configured: false };
+
+    const url =
+      `https://api.openweathermap.org/data/2.5/weather` +
+      `?lat=0&lon=0&appid=${config.openWeatherApiKey}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    return { ok: res.ok, configured: true };
+  },
 };

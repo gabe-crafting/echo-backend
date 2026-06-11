@@ -85,6 +85,16 @@ export const metNorwayProvider: WeatherProvider = {
       provider: this.name,
     };
   },
+
+  async checkHealth() {
+    const url =
+      `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=0&lon=0`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': UA },
+      signal: AbortSignal.timeout(5000),
+    });
+    return { ok: res.ok, configured: true };
+  },
 };
 
 function mapSymbolCode(code?: string): string {
