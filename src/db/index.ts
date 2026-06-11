@@ -1,7 +1,9 @@
 import { Database } from 'bun:sqlite';
 
 // Single SQLite file, created on first run. Persists across restarts.
-export const db = new Database('weather.db');
+// DB_PATH lets deployments point this at a mounted volume (e.g. /data/weather.db
+// on Fly.io) so the data survives redeploys; defaults to the local file in dev.
+export const db = new Database(process.env.DB_PATH ?? 'weather.db');
 
 // One table storing each provider's reading per location + hour.
 // UNIQUE(...) keeps one row per source/location/hour, so re-fetching
